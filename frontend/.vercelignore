@@ -1,0 +1,12 @@
+# Exclude compiled JavaScript files (build artifacts)
+**/*.js.map
+**/*.js
+!index.html
+
+# Exclude source maps
+**/*.map
+
+# Only include what we need
+!dist/assets/index-*.js
+!dist/assets/index-*.css
+!dist/index.html

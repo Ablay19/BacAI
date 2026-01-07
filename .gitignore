@@ -19,6 +19,12 @@ node_modules/
 !/frontend/dist/
 !/api/dist/
 
+# Exclude compiled JS files from individual directories
+api/src/**/*.js
+frontend/src/**/*.js
+api/src/**/*.js.map
+frontend/src/**/*.js.map
+
 # Dependencies
 
 # Misc
