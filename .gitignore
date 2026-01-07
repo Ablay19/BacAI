@@ -10,9 +10,16 @@ node_modules/
 /.next/
 /out/
 
-# Production
-/build
-/dist
+# Production builds
+/frontend/out/
+/api/dist/
+/model-service/dist/
+
+# Keep dist for deployments
+!/frontend/dist/
+!/api/dist/
+
+# Dependencies
 
 # Misc
 .DS_Store
