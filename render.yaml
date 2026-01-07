@@ -1,14 +1,30 @@
-services:
-  - type: web
-    name: bacai-frontend
-    runtime: node
-    buildCommand: cd frontend && npm install && npm run build
-    startCommand: cd frontend && npx serve -s dist -l $PORT
+# Render Blueprint for BACAI - Mauritanian AI Educational System
+version: "1"
+projects:
+  - name: bacai
+    environments:
+      - name: production
+        services:
+          - type: web
+            name: bacai-frontend
+            runtime: node
+            repo: https://github.com/Ablay19/BacAI
+            plan: free
+            region: oregon
+            buildCommand: cd frontend && npm install && npm run build
+            startCommand: cd frontend && npx serve -s dist -l $PORT
+            autoDeployTrigger: commit
+            healthCheckPath: /
 
-  - type: web
-    name: bacai-model
-    runtime: python
-    buildCommand: cd model-service && pip install -r requirements.txt
-    startCommand: cd model-service && uvicorn main:app --host 0.0.0.0 --port $PORT
+          - type: web
+            name: bacai-model
+            runtime: python
+            repo: https://github.com/Ablay19/BacAI
+            plan: free
+            region: oregon
+            buildCommand: cd model-service && pip install -r requirements.txt
+            startCommand: cd model-service && uvicorn main:app --host 0.0.0.0 --port $PORT
+            autoDeployTrigger: commit
+            healthCheckPath: /health
 
 # Environment variables can be set per service in Render dashboard
