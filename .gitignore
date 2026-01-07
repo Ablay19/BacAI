@@ -24,6 +24,11 @@ api/src/**/*.js
 frontend/src/**/*.js
 api/src/**/*.js.map
 frontend/src/**/*.js.map
+**/dist/**/*.js
+**/dist/**/*.js.map
+
+# TypeScript compilation
+*.tsbuildinfo
 
 # Dependencies
 
