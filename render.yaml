@@ -13,14 +13,7 @@ services:
       - source: /api/(.*)
         headers:
           - key: X-Rewrite-URL
-            value: https://bacai-api.onrender.com/api/$1
-
-  # API Service
-  - type: web
-    name: bacai-api
-    runtime: node
-    buildCommand: cd api && npm install && npm run build
-    startCommand: cd api && npm start
+            value: https://bacai-api-development.abdoullahelvogani.workers.dev/api/$1
 
   # Model Service (Python/FastAPI)
   - type: web
