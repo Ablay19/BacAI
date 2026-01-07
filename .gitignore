@@ -51,7 +51,6 @@ yarn-error.log*
 # Vercel
 # Vercel
 .vercel
-!frontend/vercel.json
 
 # Cloudflare
 .wrangler
