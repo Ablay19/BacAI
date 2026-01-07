@@ -2,18 +2,11 @@ services:
   # Frontend React App (Static Site)
   - type: web
     name: bacai-frontend
-    staticSite: true
     buildCommand: cd frontend && npm install && npm run build
-    publishDir: frontend/dist
     routes:
       - type: rewrite
         source: /(.*)
         destination: /index.html
-    headers:
-      - source: /api/(.*)
-        headers:
-          - key: X-Rewrite-URL
-            value: https://bacai-api-development.abdoullahelvogani.workers.dev/api/$1
 
   # Model Service (Python/FastAPI)
   - type: web
