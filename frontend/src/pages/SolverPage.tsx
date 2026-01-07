@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { SubjectsGrid } from "../components/SubjectCard";
 import { useLanguageStore } from "../store/language";
 import { Subject } from "../types";
@@ -8,10 +7,9 @@ import SolutionDisplay from "../components/SolutionDisplay";
 import { Solution } from "../types";
 
 export default function SolverPage() {
-  const navigate = useNavigate();
   const { language } = useLanguageStore();
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
-  const [solution, setSolution] = useState<Solution | null>(null);
+  const [solution] = useState<Solution | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const subjects: Subject[] = [
@@ -290,7 +288,9 @@ export default function SolverPage() {
               ? "Réponse possible"
               : "Possible answer",
         confidence: 0.95,
-        language_detected: lang,
+        language_detected: language as "ar" | "fr" | "en",
+        model_used: "qwen-8b",
+        processing_time: 1500,
       };
     }
   };

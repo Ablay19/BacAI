@@ -57,12 +57,6 @@ const navigationItems: NavigationItem[] = [
   },
 ];
 
-const languageOptions = [
-  { code: "ar", name: "العربية", nativeName: "العربية" },
-  { code: "fr", name: "French", nativeName: "Français" },
-  { code: "en", name: "English", nativeName: "English" },
-];
-
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();

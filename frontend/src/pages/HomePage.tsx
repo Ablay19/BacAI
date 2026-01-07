@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import { useLanguageStore } from "../store/language";
 
 interface HomePageProps {

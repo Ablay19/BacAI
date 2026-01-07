@@ -1,320 +1,402 @@
-# AGENTS.md - BACAI AI Agent System
+# AGENTS.md - Development Guidelines for BACAI
 
-## 🤖 Agent Architecture
+## 🚀 Build, Test & Lint Commands
 
-This document outlines the AI agent system powering BACAI (Mauritanian AI Educational System). Our multi-agent approach provides specialized, contextually-aware educational support for Mauritanian students.
+### Root Level Commands
 
----
+```bash
+# Development - Start all services
+npm run dev                    # Start frontend, API, and model-service
 
-## 🧠 Core Agents
+# Build all services
+npm run build                   # Build frontend, API, and model-service
 
-### 1. **Problem Solver Agent** 🧮
+# Testing
+npm test                        # Run Jest tests across workspaces
+npm run test:watch             # Run tests in watch mode
 
-**Specialization**: Mathematical and scientific problem-solving
+# Linting & Formatting
+npm run lint                   # ESLint for all TS/JS files
+npm run lint:fix               # Auto-fix linting issues
+npm run format                 # Format with Prettier
 
-- **Models**: Qwen3-8B, Qwen3-235B-A22B
-- **Capabilities**:
-  - Step-by-step mathematical solutions
-  - Scientific concept explanations
-  - BEPC/Baccalaureate preparation
-  - Equation solving and proofs
-- **Languages**: Arabic, French, English
-- **Curriculum**: Mauritanian secondary and university levels
+# Setup
+npm run setup                  # Install all dependencies (Node + Python)
+```
 
-### 2. **Language Specialist Agent** 📚
+### Individual Service Commands
 
-**Specialization**: Arabic, French, and English language tutoring
+#### Frontend (React + Vite + TypeScript)
 
-- **Models**: AraGPT2, Qwen3-8B
-- **Capabilities**:
-  - Grammar and syntax correction
-  - Composition guidance
-  - Literary analysis
-  - Mauritanian dialect support
-- **Focus**: Classical Arabic, Mauritanian literature, French composition
+```bash
+cd frontend
+npm run dev                    # Start development server (localhost:5173)
+npm run build                  # Build for production
+npm run preview                # Preview production build
+npm run lint                   # ESLint frontend code
+npm run lint:fix              # Auto-fix frontend issues
+```
 
-### 3. **Islamic Studies Agent** 🕌
+#### API (Hono + Cloudflare Workers + TypeScript)
 
-**Specialization**: Islamic education and cultural context
+```bash
+cd api
+npm run dev                    # Start Wrangler dev server
+npm run build                  # Compile TypeScript
+npm run deploy                 # Deploy to Cloudflare Workers
+npm run test                   # Run Jest tests
+npm run lint                   # ESLint API code
+```
 
-- **Models**: Specialized Arabic models
-- **Capabilities**:
-  - Quran interpretation
-  - Hadith explanation
-  - Islamic jurisprudence (Fiqh)
-  - Mauritanian Islamic scholarship
-- **Cultural Context**: Mahdara system integration
+#### Model Service (FastAPI + Python)
 
-### 4. **Sciences Agent** 🔬
+```bash
+cd model-service
+uvicorn main:app --reload      # Start development server (localhost:8000)
+pytest                         # Run all tests
+pytest tests/test_api.py       # Run single test file
+pytest -k "test_solve"         # Run specific test by name
+pytest -v                      # Verbose test output
+pytest --cov                   # Run with coverage
+black .                        # Format Python code
+ruff check .                   # Lint Python code
+ruff check . --fix             # Auto-fix Python linting
+```
 
-**Specialization**: Physics, Chemistry, Biology
+### Makefile Commands
 
-- **Models**: Qwen3-235B-A22B (reasoning focus)
-- **Capabilities**:
-  - Laboratory exercise explanations
-  - Scientific method guidance
-  - Concept visualization
-  - Mauritanian environmental context
+```bash
+make help                      # Show all available commands
+make install                   # Install all dependencies
+make dev                       # Start development servers
+make build                     # Build all services
+make test                      # Run tests
+make deploy                    # Deploy to production
+make clean                     # Clean build artifacts
+make docker-build              # Build Docker images
+make docker-run                # Run with Docker
+make setup                     # First-time setup
+```
 
-### 5. **Conversational Tutor Agent** 🎓
+## 📝 Code Style Guidelines
 
-**Specialization**: Adaptive tutoring and dialogue
+### TypeScript/JavaScript (Frontend & API)
 
-- **Models**: Qwen3-8B, custom fine-tuned models
-- **Capabilities**:
-  - Personalized learning paths
-  - Progress tracking
-  - Motivational support
-  - Cultural adaptation
-- **Modes**: Friendly, formal, encouraging
+#### Import Organization
 
----
+```typescript
+// 1. External libraries (react, next, etc.)
+import React from "react";
+import { useState } from "react";
+import axios from "axios";
 
-## 🔄 Agent Collaboration System
+// 2. Internal utilities (alphabetical)
+import { callModelService } from "../utils/model-client";
+import { detectLanguage } from "../utils/language-utils";
 
-### **Agent Router** 🚦
+// 3. Types and interfaces
+import type { Subject, Language } from "../types";
+
+// 4. Component imports (if any)
+import { ComponentName } from "../components/ComponentName";
+```
+
+#### TypeScript Interfaces
+
+```typescript
+// Use interface for objects, type for unions/primitives
+interface SubjectCardProps {
+  subject: Subject;
+  onSelect: (subject: Subject) => void;
+  index: number;
+}
+
+type Language = "ar" | "fr" | "en";
+type EducationLevel = "secondary_basic" | "secondary_lycee" | "university";
+
+// Prefer readonly for immutable data
+interface ApiResponse<T> {
+  readonly data: T;
+  readonly success: boolean;
+  readonly message?: string;
+}
+```
+
+#### Component Structure
+
+```typescript
+// React functional component with props interface
+interface ComponentProps {
+  title: string
+  onSubmit: (data: FormData) => void
+}
+
+export default function Component({ title, onSubmit }: ComponentProps) {
+  const [state, setState] = useState<string>('')
+
+  // Event handlers
+  const handleSubmit = useCallback((data: FormData) => {
+    onSubmit(data)
+  }, [onSubmit])
+
+  // Early returns for edge cases
+  if (!title) return null
+
+  return (
+    <div className="container">
+      {/* JSX content */}
+    </div>
+  )
+}
+```
+
+#### Error Handling
+
+```typescript
+// API endpoints - consistent error responses
+try {
+  const result = await callModelService(payload);
+  return c.json({ success: true, data: result });
+} catch (error) {
+  console.error("Operation failed:", error);
+  return c.json(
+    {
+      success: false,
+      error: "Operation failed",
+      code: "OPERATION_ERROR",
+      details: error.message,
+    },
+    500,
+  );
+}
+
+// Async operations with proper typing
+const fetchSubject = async (id: string): Promise<Subject> => {
+  try {
+    const response = await api.get<Subject>(`/subjects/${id}`);
+    return response.data;
+  } catch (error) {
+    throw new Error(`Failed to fetch subject: ${error.message}`);
+  }
+};
+```
+
+### Python (Model Service)
+
+#### Import Organization
 
 ```python
-class AgentRouter:
-    def route_request(self, user_input: Request):
-        # Language detection
-        language = self.detect_language(user_input.text)
+# 1. Standard library
+import asyncio
+import os
+from typing import Dict, List, Optional
 
-        # Subject classification
-        subject = self.classify_subject(user_input.text, language)
+# 2. Third-party libraries
+import pytest
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from transformers import AutoTokenizer
 
-        # Difficulty assessment
-        level = self.assess_level(user_input.text, subject)
+# 3. Local imports
+from models.base_models import BaseModel as CustomBaseModel
+from utils.config import get_config
+from utils.helpers import process_text
+```
 
-        # Agent selection
-        if subject == "mathematics":
-            return self.problem_solver_agent
-        elif subject == "arabic":
-            return self.language_specialist_agent
-        elif subject == "islamic_studies":
-            return self.islamic_studies_agent
-        elif subject in ["physics", "chemistry", "biology"]:
-            return self.sciences_agent
+#### Type Hints & Data Models
+
+```python
+from typing import Dict, List, Optional, Union
+from pydantic import BaseModel, Field
+
+class ExerciseRequest(BaseModel):
+    """Request model for exercise processing"""
+    exercise: str = Field(..., min_length=1, description="Exercise text")
+    subject: str = Field(..., regex="^(mathematics|arabic|french)$")
+    level: Optional[str] = Field(None, regex="^(secondary_basic|secondary_lycee)$")
+    language: str = Field(default="en", regex="^(ar|fr|en)$")
+
+class ModelResponse(BaseModel):
+    """Response model from AI models"""
+    solution: str
+    confidence: float
+    processing_time: int
+    model_used: str
+```
+
+#### Async/Await Patterns
+
+```python
+import asyncio
+from typing import List
+
+async def process_multiple_exercises(exercises: List[str]) -> List[dict]:
+    """Process multiple exercises concurrently"""
+    tasks = [process_single_exercise(ex) for ex in exercises]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    # Handle exceptions
+    processed_results = []
+    for i, result in enumerate(results):
+        if isinstance(result, Exception):
+            processed_results.append({
+                "exercise": exercises[i],
+                "error": str(result),
+                "success": False
+            })
         else:
-            return self.conversational_tutor_agent
+            processed_results.append(result)
+
+    return processed_results
 ```
 
-### **Agent Fusion Engine** ⚡
+#### Error Handling
 
 ```python
-class AgentFusion:
-    def fuse_responses(self, primary_response, context_responses):
-        # Combine insights from multiple agents
-        fused = {
-            "solution": primary_response.solution,
-            "cultural_context": context_responses.cultural,
-            "language_enhancement": context_responses.linguistic,
-            "additional_resources": context_responses.resources
+from fastapi import HTTPException
+import logging
+
+logger = logging.getLogger(__name__)
+
+class ModelServiceError(Exception):
+    """Custom exception for model service errors"""
+    pass
+
+async def call_model(payload: dict) -> dict:
+    """Call AI model with proper error handling"""
+    try:
+        response = await model_api.generate(payload)
+        return response.json()
+    except ConnectionError as e:
+        logger.error(f"Model API connection failed: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail="Model service unavailable"
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error in model call: {e}")
+        raise ModelServiceError(f"Model processing failed: {str(e)}")
+```
+
+### Testing Guidelines
+
+#### Test Naming & Structure
+
+```typescript
+// API endpoint tests
+describe("Solve API Endpoint", () => {
+  beforeEach(() => {
+    // Setup before each test
+  });
+
+  it("should solve mathematics exercise correctly", async () => {
+    const requestData = { exercise: "2+2=4", subject: "mathematics" };
+    const response = await request(app)
+      .post("/api/solve")
+      .send(requestData)
+      .expect(200);
+
+    expect(response.body.success).toBe(true);
+    expect(response.body.data.solution).toBeDefined();
+  });
+
+  it("should return 400 for invalid input", async () => {
+    await request(app)
+      .post("/api/solve")
+      .send({ exercise: "" }) // Invalid empty exercise
+      .expect(400);
+  });
+});
+```
+
+```python
+# Python test structure
+class TestModelManager:
+    """Test suite for ModelManager functionality"""
+
+    @pytest.fixture
+    def mock_config(self):
+        """Setup mock configuration"""
+        return create_test_config()
+
+    @pytest.fixture
+    def model_manager(self, mock_config):
+        """Setup model manager instance"""
+        return ModelManager(mock_config)
+
+    @pytest.mark.asyncio
+    async def test_solve_mathematics_exercise(self, model_manager):
+        """Test solving mathematics exercises"""
+        request_data = {
+            "exercise": "Solve: x² + 5x - 3 = 0",
+            "subject": "mathematics",
+            "language": "en"
         }
-        return fused
+
+        result = await model_manager.solve_exercise(request_data)
+
+        assert result["success"] is True
+        assert "solution" in result["data"]
+        assert result["data"]["subject"] == "mathematics"
 ```
 
----
+## 🔧 Development Workflow
 
-## 🎯 Specialized Capabilities
+### Before Committing
 
-### **Cultural Context Integration** 🇲🇷
+1. **Run linting**: `npm run lint` (or `ruff check .` for Python)
+2. **Run tests**: `npm test` (or `pytest` for Python)
+3. **Check types**: TypeScript automatically checks on build
+4. **Format code**: `npm run format` (or `black .` for Python)
 
-- **Mauritanian Curriculum Alignment**: BEPC, Baccalaureate formats
-- **Local Examples**: Sahara desert physics, Islamic mathematics
-- **Cultural References**: Traditional Mahdara teaching methods
-- **Regional Dialects**: Hassaniya Arabic support
+### Git Workflow
 
-### **Multilingual Intelligence** 🌍
-
-- **Code-Switching**: Seamless language transitions
-- **Cross-Lingual Support**: Arabic-French-English connections
-- **Cultural Nuances**: Context-appropriate explanations
-- **Language Preservation**: Promoting Arabic and French excellence
-
-### **Adaptive Learning** 📈
-
-- **Difficulty Calibration**: Automatic level adjustment
-- **Progress Analytics**: Learning pattern recognition
-- **Weakness Identification**: Targeted improvement areas
-- **Study Path Optimization**: Personalized curriculum
-
----
-
-## 🏗️ Technical Implementation
-
-### **Model Orchestration**
-
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│  Request Router │───▶│  Agent Manager  │───▶│  Model Cluster  │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-                                │
-                    ┌───────────┼───────────┐
-                    │           │           │
-        ┌───────────▼───┐ ┌───▼────┐ ┌──▼────────┐
-        │   Math Agent  │ │Arabic   │ │Islamic  │
-        │               │ │Agent    │ │Agent    │
-        └───────────────┘ └─────────┘ └──────────┘
+```bash
+# Feature development
+git checkout -b feature/new-subject-type
+npm run dev  # Test your changes
+npm test && npm run lint  # Verify quality
+git add .
+git commit -m "feat: add physics subject support"
+git push origin feature/new-subject-type
 ```
 
-### **Agent Memory System**
+### Single Test Execution
 
-- **Session Memory**: Conversation continuity
-- **Knowledge Base**: Mauritanian curriculum data
-- **Cultural Context**: Local examples and references
-- **Learning Analytics**: Student progress tracking
+```bash
+# Node.js/TypeScript
+npm test -- --testNamePattern="solve endpoint"
+npm test api/tests/solve.test.ts
 
-### **Quality Assurance**
-
-- **Cross-Agent Validation**: Multiple perspective verification
-- **Cultural Appropriateness**: Mauritanian context checking
-- **Educational Soundness**: Pedagogical validation
-- **Language Quality**: Grammar and cultural accuracy
-
----
-
-## 🚀 Agent Evolution Roadmap
-
-### **Phase 1**: Core Implementation ✅
-
-- [x] Problem Solver Agent
-- [x] Language Specialist Agent
-- [x] Islamic Studies Agent
-- [x] Sciences Agent
-- [x] Conversational Tutor Agent
-
-### **Phase 2**: Advanced Features 🔄
-
-- [ ] Visual Learning Agent (diagrams, charts)
-- [ ] Assessment Agent (quizzes, evaluations)
-- [ ] Study Group Agent (collaborative learning)
-- [ ] Parent Dashboard Agent (progress reports)
-
-### **Phase 3**: AI Enhancement 🔮
-
-- [ ] Emotional Intelligence Agent
-- [ ] Learning Style Adaptation Agent
-- [ ] Career Guidance Agent
-- [ ] University Preparation Agent
-
----
-
-## 📊 Performance Metrics
-
-### **Agent Efficiency**
-
-```python
-class AgentMetrics:
-    def __init__(self):
-        self.response_time = {}
-        self.accuracy_scores = {}
-        self.user_satisfaction = {}
-        self.cultural_appropriateness = {}
-
-    def track_performance(self, agent_name, request, response, feedback):
-        self.response_time[agent_name] = response.time
-        self.accuracy_scores[agent_name] = feedback.correctness
-        self.user_satisfaction[agent_name] = feedback.satisfaction
-        self.cultural_appropriateness[agent_name] = feedback.cultural_fit
+# Python
+pytest tests/test_api.py::TestAPIEndpoints::test_solve_endpoint
+pytest -k "solve_endpoint" -v
 ```
 
-### **Quality Indicators**
+## 🎯 Project-Specific Guidelines
 
-- **Response Accuracy**: 95% target across all agents
-- **Cultural Relevance**: Mauritanian context integration
-- **Language Proficiency**: Native-level Arabic/French support
-- **Educational Impact**: Learning outcome improvements
+### Multilingual Support
 
----
+- Always test with Arabic (`ar`), French (`fr`), and English (`en`)
+- Use proper RTL/LTR styling in frontend
+- Validate language codes with regex patterns
 
-## 🔧 Agent Configuration
+### Mauritanian Context
 
-### **Environment Setup**
+- Include cultural context examples in AI responses
+- Support local curriculum levels: `secondary_basic`, `secondary_lycee`, `university`
+- Use appropriate educational terminology for each region
 
-```yaml
-agents:
-  problem_solver:
-    model: "Qwen/Qwen3-8B-Instruct"
-    temperature: 0.3 # Precision-focused
-    max_tokens: 2048
-    specialties: ["mathematics", "physics", "chemistry"]
+### Performance Considerations
 
-  language_specialist:
-    model: "aubmindlab/aragpt2-base"
-    temperature: 0.5 # Creative language use
-    max_tokens: 1024
-    specialties: ["arabic", "french", "english"]
+- API responses should be under 2 seconds
+- Use async/await for all I/O operations
+- Implement proper caching for repeated requests
+- Monitor model response times and implement timeouts
 
-  islamic_studies:
-    model: "Qwen/Qwen3-8B-Instruct"
-    temperature: 0.2 # Conservative knowledge
-    max_tokens: 2048
-    specialties: ["quran", "hadith", "fiqh"]
+### Security Guidelines
 
-  sciences:
-    model: "Qwen/Qwen3-235B-A22B-Instruct"
-    temperature: 0.4 # Balanced reasoning
-    max_tokens: 3072
-    specialties: ["physics", "chemistry", "biology"]
-
-  conversational_tutor:
-    model: "Qwen/Qwen3-8B-Instruct"
-    temperature: 0.7 # Engaging conversation
-    max_tokens: 1024
-    specialties: ["dialogue", "motivation", "guidance"]
-```
-
----
-
-## 🌟 Unique Features
-
-### **Mauritanian Specialization**
-
-- **Local Context**: Sahara examples, traditional knowledge
-- **Cultural Alignment**: Islamic values integration
-- **Educational Standards**: BEPC/Baccalaureate preparation
-- **Language Preservation**: Arabic excellence promotion
-
-### **Agent Symbiosis**
-
-- **Cross-Referencing**: Agents share insights
-- **Context Enrichment**: Multiple perspective integration
-- **Quality Assurance**: Peer validation between agents
-- **Continuous Learning**: Shared knowledge improvement
-
-### **Accessibility Focus**
-
-- **Free Tier Usage**: No cost barriers for Mauritanian students
-- **Mobile Optimization**: Smartphone-compatible interface
-- **Offline Capability**: Essential content caching
-- **Low Bandwidth**: Efficient for limited internet
-
----
-
-## 🎓 Educational Impact
-
-### **Student Benefits**
-
-- **Personalized Learning**: Custom-paced education
-- **24/7 Availability**: Always-on tutoring support
-- **Cultural Relevance**: Localized educational content
-- **Language Excellence**: Multilingual mastery development
-
-### **Teacher Support**
-
-- **Teaching Assistant**: AI-powered classroom aid
-- **Resource Generation**: Exercise and test creation
-- **Student Analytics**: Performance tracking tools
-- **Curriculum Alignment**: Mauritanian standards compliance
-
-### **System Advantages**
-
-- **Scalable**: Supports unlimited students
-- **Consistent**: Quality education delivery
-- **Adaptable**: Curriculum evolution ready
-- **Cost-Effective**: Free educational access
-
----
-
-**🚀 BACAI Agents: Empowering Mauritanian Education Through AI Excellence**
+- Validate all input with Zod schemas (Node.js) or Pydantic (Python)
+- Sanitize user inputs before processing
+- Never log sensitive information (API keys, personal data)
+- Use HTTPS for all API communications

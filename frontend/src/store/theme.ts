@@ -1,82 +1,82 @@
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import type { Theme, UserPreferences } from '../types'
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import type { UserPreferences } from "../types";
 
-type Theme = 'light' | 'dark'
+type Theme = "light" | "dark";
 
 interface ThemeStore {
-  theme: Theme
-  isDark: boolean
-  
+  theme: Theme;
+  isDark: boolean;
+
   // Actions
-  setTheme: (theme: Theme) => void
-  toggleTheme: () => void
-  resetTheme: () => void
+  setTheme: (theme: Theme) => void;
+  toggleTheme: () => void;
+  resetTheme: () => void;
 }
 
 export const useThemeStore = create<ThemeStore>()(
   persist(
     (set, get) => ({
-      theme: 'light',
+      theme: "light",
       isDark: false,
 
       setTheme: (theme: Theme) => {
         set({
           theme,
-          isDark: theme === 'dark'
-        })
-        
+          isDark: theme === "dark",
+        });
+
         // Apply theme to document
-        if (theme === 'dark') {
-          document.documentElement.classList.add('dark')
-          document.body.classList.add('bg-gray-900', 'text-gray-100')
-          document.body.classList.remove('bg-gray-50', 'text-gray-900')
+        if (theme === "dark") {
+          document.documentElement.classList.add("dark");
+          document.body.classList.add("bg-gray-900", "text-gray-100");
+          document.body.classList.remove("bg-gray-50", "text-gray-900");
         } else {
-          document.documentElement.classList.remove('dark')
-          document.body.classList.remove('bg-gray-900', 'text-gray-100')
-          document.body.classList.add('bg-gray-50', 'text-gray-900')
+          document.documentElement.classList.remove("dark");
+          document.body.classList.remove("bg-gray-900", "text-gray-100");
+          document.body.classList.add("bg-gray-50", "text-gray-900");
         }
       },
 
       toggleTheme: () => {
-        const currentTheme = get().theme
-        const newTheme = currentTheme === 'light' ? 'dark' : 'light'
-        get().setTheme(newTheme)
+        const currentTheme = get().theme;
+        const newTheme = currentTheme === "light" ? "dark" : "light";
+        get().setTheme(newTheme);
       },
 
       resetTheme: () => {
-        get().setTheme('light')
-      }
+        get().setTheme("light");
+      },
     }),
     {
-      name: 'bacai-theme-storage',
-      partialize: (state) => ({ 
-        theme: state.theme 
-      })
-    }
-  )
-)
+      name: "bacai-theme-storage",
+      partialize: (state) => ({
+        theme: state.theme,
+      }),
+    },
+  ),
+);
 
 interface UserPreferencesStore extends UserPreferences {
   // Additional preferences
-  autoSaveProgress: boolean
-  showHints: boolean
-  solutionDetail: 'simple' | 'detailed' | 'comprehensive'
-  
+  autoSaveProgress: boolean;
+  showHints: boolean;
+  solutionDetail: "simple" | "detailed" | "comprehensive";
+
   // Actions
-  updatePreferences: (preferences: Partial<UserPreferences>) => void
-  resetPreferences: () => void
+  updatePreferences: (preferences: Partial<UserPreferences>) => void;
+  resetPreferences: () => void;
 }
 
 const defaultPreferences: UserPreferences = {
-  language: 'en',
-  theme: 'light',
+  language: "en",
+  theme: "light",
   notifications: true,
   auto_detect_language: true,
-  preferred_model: 'qwen2-8b',
+  preferred_model: "qwen2-8b",
   step_by_step: true,
-  cultural_context: true
-}
+  cultural_context: true,
+};
 
 export const useUserPreferencesStore = create<UserPreferencesStore>()(
   persist(
@@ -84,14 +84,14 @@ export const useUserPreferencesStore = create<UserPreferencesStore>()(
       ...defaultPreferences,
       autoSaveProgress: true,
       showHints: true,
-      solutionDetail: 'detailed',
+      solutionDetail: "detailed",
 
       updatePreferences: (newPreferences: Partial<UserPreferences>) => {
-        const current = get()
+        const current = get();
         set({
           ...current,
-          ...newPreferences
-        })
+          ...newPreferences,
+        });
       },
 
       resetPreferences: () => {
@@ -99,12 +99,12 @@ export const useUserPreferencesStore = create<UserPreferencesStore>()(
           ...defaultPreferences,
           autoSaveProgress: true,
           showHints: true,
-          solutionDetail: 'detailed'
-        })
-      }
+          solutionDetail: "detailed",
+        });
+      },
     }),
     {
-      name: 'bacai-preferences-storage'
-    }
-  )
-)
+      name: "bacai-preferences-storage",
+    },
+  ),
+);

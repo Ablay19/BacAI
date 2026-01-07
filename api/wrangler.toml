@@ -20,7 +20,3 @@ binding = "BACAI_CACHE"
 id = "your-kv-namespace-id"
 preview_id = "your-kv-preview-id"
 
-# Durable Objects for session management (optional)
-[[durable_objects.bindings]]
-name = "SESSION_MANAGER"
-class_name = "SessionManager"
