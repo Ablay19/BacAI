@@ -48,8 +48,8 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 
-# Vercel (keep vercel.json for deployment config)
-# .vercel
+# Vercel
+.vercel
 
 # Cloudflare
 .wrangler
