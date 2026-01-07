@@ -2,7 +2,6 @@
 version: "1"
 projects:
   - name: bacai
-    repo: https://github.com/Ablay19/BacAI
     environments:
       - name: production
         services:
