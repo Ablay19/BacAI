@@ -1,17 +1,19 @@
 services:
-  # Frontend React App
+  # Frontend React App (Static Site)
   - type: web
     name: bacai-frontend
-    runtime: node
+    staticSite: true
     buildCommand: cd frontend && npm install && npm run build
-    staticPublishPath: frontend/dist
+    publishDir: frontend/dist
     routes:
       - type: rewrite
         source: /(.*)
         destination: /index.html
-      - type: redirect
-        source: /api/(.*)
-        destination: https://bacai-api.onrender.com/api/$1
+    headers:
+      - source: /api/(.*)
+        headers:
+          - key: X-Rewrite-URL
+            value: https://bacai-api.onrender.com/api/$1
 
   # API Service
   - type: web
@@ -19,27 +21,13 @@ services:
     runtime: node
     buildCommand: cd api && npm install && npm run build
     startCommand: cd api && npm start
-    routes:
-      - type: rewrite
-        source: /api/(.*)
-        destination: /api/$1
 
-  # Model Service (if needed)
+  # Model Service (Python/FastAPI)
   - type: web
     name: bacai-model
-    runtime: python
+    runtime: python3
     buildCommand: cd model-service && pip install -r requirements.txt
-    startCommand: cd model-service && python main.py
-    routes:
-      - type: rewrite
-        source: /model/(.*)
-        destination: /model/$1
-
-# Database (optional)
-databases:
-  - name: bacai-db
-    databaseName: bacai
-    user: bacai
+    startCommand: cd model-service && uvicorn main:app --host 0.0.0.0 --port $PORT
 
 # Environment variables
 envVarGroups:
@@ -47,13 +35,3 @@ envVarGroups:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: API_URL
-        fromService:
-          type: web
-          name: bacai-api
-          property: host
-      - key: MODEL_SERVICE_URL
-        fromService:
-          type: web
-          name: bacai-model
-          property: host
