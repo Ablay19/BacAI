@@ -1,0 +1,13 @@
+# Ignore source files and keep only build output
+api/
+model-service/
+.github/
+**/*.ts
+**/*.tsx
+**/*.js
+**/*.map
+src/
+node_modules/
+
+# Only deploy the built frontend
+!frontend/dist/
