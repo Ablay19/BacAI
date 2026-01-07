@@ -49,7 +49,9 @@ yarn-error.log*
 .env.production.local
 
 # Vercel
+# Vercel
 .vercel
+!frontend/vercel.json
 
 # Cloudflare
 .wrangler
