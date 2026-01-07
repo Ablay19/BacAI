@@ -1,9 +1,9 @@
 services:
   - type: web
     name: bacai-frontend
-    staticSite: true
+    runtime: node
     buildCommand: cd frontend && npm install && npm run build
-    publishDir: frontend/dist
+    startCommand: cd frontend && npx serve -s dist -l $PORT
 
   - type: web
     name: bacai-model
