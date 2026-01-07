@@ -36,10 +36,10 @@ services:
         destination: /model/$1
 
 # Database (optional)
-# databases:
-#   - name: bacai-db
-#     databaseName: bacai
-#     user: bacai
+databases:
+  - name: bacai-db
+    databaseName: bacai
+    user: bacai
 
 # Environment variables
 envVarGroups:
