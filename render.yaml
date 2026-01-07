@@ -22,9 +22,4 @@ services:
     buildCommand: cd model-service && pip install -r requirements.txt
     startCommand: cd model-service && uvicorn main:app --host 0.0.0.0 --port $PORT
 
-# Environment variables
-envVarGroups:
-  - name: bacai-env
-    envVars:
-      - key: NODE_ENV
-        value: production
+# Environment variables can be set per service in Render dashboard
