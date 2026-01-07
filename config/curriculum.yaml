@@ -1,0 +1,103 @@
+models:
+  primary:
+    name: "Qwen/Qwen2-8B-Instruct"
+    type: "multilingual"
+    languages: ["arabic", "french", "english"]
+    specialties: ["mathematics", "sciences", "general"]
+    max_tokens: 2048
+    temperature: 0.7
+    
+  fallback:
+    name: "microsoft/DialoGPT-medium"
+    type: "conversational"
+    languages: ["english", "french"]
+    specialties: ["conversation", "basic_explanations"]
+    max_tokens: 1024
+    temperature: 0.8
+
+  arabic_specialist:
+    name: "aubmindlab/aragpt2-base"
+    type: "arabic_specialized"
+    languages: ["arabic"]
+    specialties: ["arabic_language", "islamic_studies"]
+    max_tokens: 1024
+    temperature: 0.6
+
+subjects:
+  mathematics:
+    levels: ["secondary_basic", "secondary_lycee", "university"]
+    topics: ["algebra", "geometry", "calculus", "statistics"]
+    
+  arabic:
+    levels: ["secondary_basic", "secondary_lycee", "university"]
+    topics: ["grammar", "literature", "composition", "classical_arabic"]
+    
+  french:
+    levels: ["secondary_basic", "secondary_lycee", "university"]
+    topics: ["grammar", "literature", "technical_writing"]
+    
+  english:
+    levels: ["secondary_basic", "secondary_lycee", "university"]
+    topics: ["academic_writing", "technical_english"]
+    
+  sciences:
+    levels: ["secondary_basic", "secondary_lycee", "university"]
+    topics: ["physics", "chemistry", "biology"]
+    
+  islamic_studies:
+    levels: ["secondary_basic", "secondary_lycee", "university"]
+    topics: ["quran", "hadith", "fiqh", "islamic_history"]
+
+curriculum:
+  mauritania:
+    secondary:
+      basic:
+        certificate: "BEPC"
+        duration: "3_years"
+        subjects: ["mathematics", "arabic", "french", "sciences"]
+        
+      lycee:
+        certificate: "Baccalaureate"
+        duration: "3_years"
+        specializations: ["mathematics", "sciences", "literature", "quran_arabic"]
+        
+    university:
+      levels: ["bachelor", "master", "doctorate"]
+      faculties: ["sciences", "arts", "islamic_studies", "economics"]
+
+languages:
+  codes:
+    arabic: "ar"
+    french: "fr" 
+    english: "en"
+    
+  detection:
+    primary: "arabic"
+    secondary: ["french", "english"]
+    
+  curriculum_languages:
+    - "arabic"
+    - "french"
+
+deployment:
+  vercel:
+    framework: "react"
+    build_command: "npm run build"
+    output_directory: "out"
+    
+  railway:
+    runtime: "python"
+    build_command: "pip install -r requirements.txt"
+    start_command: "uvicorn main:app --host 0.0.0.0 --port $PORT"
+    
+  cloudflare:
+    runtime: "edge"
+    compatibility_date: "2024-01-01"
+
+features:
+  multilingual_routing: true
+  step_by_step_explanations: true
+  cultural_context: true
+  curriculum_alignment: true
+  progress_tracking: true
+  offline_mode: false
