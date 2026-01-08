@@ -387,26 +387,30 @@
     direction: rtl;
     text-align: right;
   }
+}
 
-  /* Gradient Text */
-  .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-primary-400;
-  }
+/* Gradient Text */
+.text-gradient {
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  background-image: linear-gradient(to right, #0284c7, #38bdf8);
+}
 
-  /* Glass Effect */
-  .glass {
-    @apply bg-white/80 backdrop-blur-lg;
-  }
+/* Glass Effect */
+.glass {
+  background-color: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(16px);
+}
 
-  /* Hide scrollbar */
-  .hide-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
+/* Hide scrollbar */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
 
-  .hide-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 /* Animation Keyframes */
