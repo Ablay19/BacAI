@@ -4,8 +4,8 @@ from datetime import datetime
 import json
 
 from .base_models import BaseAIModel, HuggingFaceModel, OpenAIModel
-from ..utils.config import Config, get_config
-from ..utils.logger import get_logger
+from utils.config import Config, get_config
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 

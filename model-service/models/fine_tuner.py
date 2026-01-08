@@ -12,8 +12,8 @@ from typing import Dict, Any, List
 import os
 from pathlib import Path
 
-from ..utils.config import Config
-from ..utils.logger import get_logger
+from utils.config import Config
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
