@@ -61,7 +61,7 @@ export default function SubjectCard({
         style={{ backgroundColor: subject.color }}
       >
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center gap-3">
             <div className="text-4xl">{subject.icon}</div>
             <div>
               <h3 className="text-xl font-bold">{getDisplayName()}</h3>
@@ -115,7 +115,7 @@ export default function SubjectCard({
 
         {/* Features */}
         <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-2">
             <span className="text-green-500">✓</span>
             <span className="text-sm text-gray-700">
               {language === "ar"
@@ -125,7 +125,7 @@ export default function SubjectCard({
                   : "Step-by-step solutions"}
             </span>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-2">
             <span className="text-green-500">✓</span>
             <span className="text-sm text-gray-700">
               {language === "ar"
@@ -135,7 +135,7 @@ export default function SubjectCard({
                   : "Multilingual support"}
             </span>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-2">
             <span className="text-green-500">✓</span>
             <span className="text-sm text-gray-700">
               {language === "ar"
@@ -145,7 +145,7 @@ export default function SubjectCard({
                   : "Mauritanian cultural context"}
             </span>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-2">
             <span className="text-green-500">✓</span>
             <span className="text-sm text-gray-700">
               {language === "ar"
@@ -218,7 +218,7 @@ export function SubjectsGrid({ subjects, onSubjectSelect }: SubjectsGridProps) {
 
       {/* Additional Info */}
       <div className="bg-blue-50 rounded-xl p-6 mt-8 max-w-4xl mx-auto">
-        <div className="flex items-center space-x-3 mb-3">
+        <div className="flex items-center gap-3 mb-3">
           <span className="text-2xl">💡</span>
           <h3 className="text-lg font-semibold text-blue-900">
             {language === "ar"
@@ -231,7 +231,7 @@ export function SubjectsGrid({ subjects, onSubjectSelect }: SubjectsGridProps) {
         <ul
           className={`space-y-2 text-blue-800 ${language === "ar" ? "text-right" : "text-left"}`}
         >
-          <li className="flex items-start space-x-2">
+          <li className="flex items-start gap-2">
             <span className="text-blue-600 mt-1">•</span>
             <span>
               {language === "ar"
@@ -241,7 +241,7 @@ export function SubjectsGrid({ subjects, onSubjectSelect }: SubjectsGridProps) {
                   : "Write exercises in your preferred language (Arabic, French, English)"}
             </span>
           </li>
-          <li className="flex items-start space-x-2">
+          <li className="flex items-start gap-2">
             <span className="text-blue-600 mt-1">•</span>
             <span>
               {language === "ar"
@@ -251,7 +251,7 @@ export function SubjectsGrid({ subjects, onSubjectSelect }: SubjectsGridProps) {
                   : "Select the appropriate education level for personalized solutions"}
             </span>
           </li>
-          <li className="flex items-start space-x-2">
+          <li className="flex items-start gap-2">
             <span className="text-blue-600 mt-1">•</span>
             <span>
               {language === "ar"

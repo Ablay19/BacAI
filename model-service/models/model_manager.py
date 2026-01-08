@@ -4,8 +4,8 @@ from datetime import datetime
 import json
 
 from .base_models import BaseAIModel, HuggingFaceModel, OpenAIModel
-from ..utils.config import Config, get_config
-from ..utils.logger import get_logger
+from utils.config import Config, get_config
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -60,10 +60,12 @@ class ModelManager:
     
     async def _create_model(self, model_config) -> Optional[BaseAIModel]:
         """Create a model instance based on configuration"""
+        logger.info(f"Creating model: {model_config.name}")
         try:
             model_type = model_config.type.lower()
             
             if model_config.name.startswith('gpt-') or model_config.name.startswith('text-'):
+                logger.info(f"Initializing OpenAI model: {model_config.name}")
                 # OpenAI model
                 config_dict = {
                     'name': model_config.name,
@@ -73,6 +75,7 @@ class ModelManager:
                 }
                 model = OpenAIModel(config_dict)
             else:
+                logger.info(f"Initializing Hugging Face model: {model_config.name}")
                 # Hugging Face model
                 config_dict = {
                     'name': model_config.name,
@@ -81,11 +84,17 @@ class ModelManager:
                 }
                 model = HuggingFaceModel(config_dict)
             
+            logger.info(f"Calling initialize for {model_config.name}")
             success = await model.initialize()
-            return model if success else None
+            if success:
+                logger.info(f"Successfully initialized model {model_config.name}")
+                return model
+            else:
+                logger.error(f"Failed to initialize model {model_config.name}")
+                return None
             
         except Exception as e:
-            logger.error(f"Failed to create model {model_config.name}: {e}")
+            logger.error(f"Failed to create model {model_config.name}: {e}", exc_info=True)
             return None
     
     def _select_model(self, request_data: Dict[str, Any]) -> BaseAIModel:

@@ -10,9 +10,27 @@ node_modules/
 /.next/
 /out/
 
-# Production
-/build
-/dist
+# Production builds
+/frontend/out/
+/api/dist/
+/model-service/dist/
+
+# Keep dist for deployments
+!/frontend/dist/
+!/api/dist/
+
+# Exclude compiled JS files from individual directories
+api/src/**/*.js
+frontend/src/**/*.js
+api/src/**/*.js.map
+frontend/src/**/*.js.map
+**/dist/**/*.js
+**/dist/**/*.js.map
+
+# TypeScript compilation
+*.tsbuildinfo
+
+# Dependencies
 
 # Misc
 .DS_Store
@@ -31,7 +49,9 @@ yarn-error.log*
 .env.production.local
 
 # Vercel
+# Vercel
 .vercel
+!frontend/vercel.json
 
 # Cloudflare
 .wrangler
@@ -100,3 +120,4 @@ temp/
 
 # Linux
 *~
+.env*.local

@@ -1,27 +1,11 @@
 models:
   primary:
-    name: "Qwen/Qwen2-8B-Instruct"
-    type: "multilingual"
-    languages: ["arabic", "french", "english"]
-    specialties: ["mathematics", "sciences", "general"]
-    max_tokens: 2048
-    temperature: 0.7
-    
-  fallback:
-    name: "microsoft/DialoGPT-medium"
-    type: "conversational"
-    languages: ["english", "french"]
-    specialties: ["conversation", "basic_explanations"]
-    max_tokens: 1024
-    temperature: 0.8
-
-  arabic_specialist:
     name: "aubmindlab/aragpt2-base"
     type: "arabic_specialized"
-    languages: ["arabic"]
-    specialties: ["arabic_language", "islamic_studies"]
+    languages: ["arabic", "french", "english"]
+    specialties: ["mathematics", "sciences", "general", "arabic_language", "islamic_studies"]
     max_tokens: 1024
-    temperature: 0.6
+    temperature: 0.7
 
 subjects:
   mathematics:

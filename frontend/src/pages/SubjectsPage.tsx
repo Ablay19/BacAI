@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useLanguageStore } from "../store/language";
 import { Subject } from "../types";
 
@@ -7,6 +8,7 @@ interface SubjectsPageProps {
 
 export default function SubjectsPage({ onSubjectSelect }: SubjectsPageProps) {
   const { language } = useLanguageStore();
+  const [searchQuery, setSearchQuery] = useState("");
 
   const subjects: Subject[] = [
     {
@@ -245,6 +247,8 @@ export default function SubjectsPage({ onSubjectSelect }: SubjectsPageProps) {
             <div className="relative">
               <input
                 type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={
                   language === "ar"
                     ? "ابحث عن مادة..."
@@ -330,7 +334,23 @@ export default function SubjectsPage({ onSubjectSelect }: SubjectsPageProps) {
 
         {/* Subject Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {subjects.map((subject, index) => (
+          {subjects
+            .filter((subject) => {
+              if (!searchQuery.trim()) return true;
+              const query = searchQuery.toLowerCase();
+              return (
+                subject.name.toLowerCase().includes(query) ||
+                subject.name_ar.includes(query) ||
+                subject.name_fr.toLowerCase().includes(query) ||
+                subject.topics.some(
+                  (topic) =>
+                    topic.name.toLowerCase().includes(query) ||
+                    topic.name_ar.includes(query) ||
+                    topic.name_fr.toLowerCase().includes(query)
+                )
+              );
+            })
+            .map((subject, index) => (
             <div
               key={subject.id}
               onClick={() => onSubjectSelect(subject)}
