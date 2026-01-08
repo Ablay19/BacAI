@@ -63,6 +63,38 @@ railway up
 - PostgreSQL database available
 - Redis add-on available
 
+### Render
+- Free static sites with 100GB bandwidth/month
+- Automatic SSL certificates
+- Global CDN
+- Automatic deploys from GitHub
+- **Configuration**: Use `render.yaml` in project root for monorepo support
+
+## Render Deployment (Frontend)
+
+The frontend is deployed as a static site on Render. Configuration is in `render.yaml`:
+
+```yaml
+services:
+  - type: web
+    name: bacai-frontend
+    env: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    rootDir: frontend
+```
+
+**Steps to deploy**:
+1. Push changes to GitHub
+2. Connect repository to Render
+3. Render will automatically detect `render.yaml` and deploy
+
+**Manual deployment**:
+```bash
+# Render will use the configuration from render.yaml
+# No manual commands needed - automatic deployment on push
+```
+
 ## Docker Deployment (Alternative)
 
 ```bash
