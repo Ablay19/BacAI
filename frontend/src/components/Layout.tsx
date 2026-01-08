@@ -111,7 +111,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center gap-3">
               <div className="text-3xl">🇲🇷</div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">BACAI</h1>
@@ -142,7 +142,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                       }
                     `}
                   >
-                    <div className="flex items-center space-x-3">
+                    <div className="flex items-center gap-3">
                       <span className="text-xl">{item.icon}</span>
                       <span className={isRTL ? "font-arabic" : ""}>
                         {getLabel(item)}
@@ -235,8 +235,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </div>
 
               {/* Status Indicators */}
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2 text-sm text-gray-600">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 text-sm text-gray-600">
                   <span className="w-2 h-2 bg-green-500 rounded-full"></span>
                   <span>
                     {language === "ar"
@@ -248,7 +248,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 </div>
 
                 {/* Quick Actions */}
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleNavigation("/solver")}
                     className="px-3 py-1 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"

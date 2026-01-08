@@ -9,7 +9,6 @@ import { Solution } from "../types";
 export default function SolverPage() {
   const { language } = useLanguageStore();
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
-  const [solution] = useState<Solution | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const subjects: Subject[] = [
@@ -371,18 +370,6 @@ export default function SolverPage() {
         </div>
 
         <ProblemSolver onSolve={handleSolve} isLoading={isLoading} />
-
-        {solution && (
-          <div className="mt-8">
-            <SolutionDisplay
-              steps={solution.steps}
-              finalAnswer={solution.final_answer}
-              confidence={solution.confidence}
-              language={solution.language_detected}
-              processingTime={2.3}
-            />
-          </div>
-        )}
       </div>
     </div>
   );

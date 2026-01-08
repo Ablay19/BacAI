@@ -2,6 +2,13 @@ import { useState } from "react";
 import { useLanguageStore } from "../store/language";
 import { Solution } from "../types";
 
+interface SelectOption {
+  value: string;
+  label: string;
+  labelAr: string;
+  labelFr: string;
+}
+
 interface ProblemSolverProps {
   onSolve: (
     exercise: string,
@@ -132,7 +139,7 @@ export default function ProblemSolver({
     }
   };
 
-  const getLabel = (item: any) => {
+  const getLabel = (item: SelectOption) => {
     switch (language) {
       case "ar":
         return item.labelAr || item.label;
@@ -246,7 +253,7 @@ export default function ProblemSolver({
                   ? "Mode de solution:"
                   : "Solution Mode:"}
             </label>
-            <div className="flex space-x-4">
+            <div className="flex gap-4">
               {solutionModes.map((mode) => (
                 <label key={mode.value} className="flex items-center">
                   <input
@@ -295,7 +302,7 @@ export default function ProblemSolver({
               className="px-8 py-3 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isLoading ? (
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center gap-2">
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   <span>
                     {language === "ar"
