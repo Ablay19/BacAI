@@ -4,10 +4,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
 	"time"
+
+	"ai_agent_termux/pkg/lowlevel"
 
 	"golang.org/x/exp/slog"
 )
@@ -22,6 +25,7 @@ type FileMetadata struct {
 	IsDir       bool      `json:"is_dir"`
 	Processed   bool      `json:"processed"` // Track if processed by the agent
 	LastProcess time.Time `json:"last_process,omitempty"`
+	ContentHash string    `json:"content_hash,omitempty"`
 	Priority    int       `json:"priority"` // Priority for processing (higher = more important)
 }
 
@@ -37,25 +41,129 @@ type DirectoryStats struct {
 	RequiresBatch bool   `json:"requires_batch"` // true if needs special batch handling
 }
 
+// DiscoverFilesFast is a high-speed alternative to filepath.Walk using low-level syscalls
+func DiscoverFilesFast(dir string) ([]string, error) {
+	var allFiles []string
+
+	names, err := lowlevel.FastScanDir(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, name := range names {
+		if name == "." || name == ".." {
+			continue
+		}
+		path := filepath.Join(dir, name)
+		info, err := os.Lstat(path)
+		if err != nil {
+			continue
+		}
+
+		if info.IsDir() {
+			subFiles, _ := DiscoverFilesFast(path)
+			allFiles = append(allFiles, subFiles...)
+		} else {
+			allFiles = append(allFiles, path)
+		}
+	}
+	return allFiles, nil
+}
+
 // DiscoverFilesEnhanced provides enhanced file discovery with directory analysis
 func DiscoverFilesEnhanced(dirs []string) ([]FileMetadata, []DirectoryStats, error) {
 	var allFiles []FileMetadata
 	var dirStats []DirectoryStats
 
 	for _, dir := range dirs {
-		slog.Info("Scanning directory", "directory", dir)
+		slog.Info("Scanning directory with fast syscalls", "directory", dir)
 
-		files, stats, err := discoverDirectoryEnhanced(dir)
+		// Use fast scanner for initial file list if it's potentially large
+		paths, err := DiscoverFilesFast(dir)
 		if err != nil {
-			slog.Error("Error scanning directory", "directory", dir, "error", err)
+			slog.Warn("Fast discovery failed, falling back to standard walk", "directory", dir, "error", err)
+			files, stats, err := discoverDirectoryEnhanced(dir)
+			if err == nil {
+				allFiles = append(allFiles, files...)
+				dirStats = append(dirStats, stats)
+			}
 			continue
 		}
 
-		allFiles = append(allFiles, files...)
+		// Process the discovered paths into metadata
+		stats := DirectoryStats{Path: dir}
+		for _, path := range paths {
+			info, err := os.Stat(path)
+			if err != nil {
+				continue
+			}
+
+			ext := strings.ToLower(filepath.Ext(path))
+			fileType := "other"
+			switch ext {
+			case ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp":
+				fileType = "image"
+				stats.ImageFiles++
+			case ".pdf":
+				fileType = "pdf"
+				stats.PDFFiles++
+			case ".mp3", ".wav", ".flac", ".m4a", ".ogg":
+				fileType = "audio"
+				stats.OtherFiles++
+			case ".mp4", ".mkv", ".avi", ".mov", ".wmv":
+				fileType = "video"
+				stats.OtherFiles++
+			case ".txt", ".md", ".log", ".csv", ".json", ".xml", ".html", ".htm",
+				".go", ".py", ".js", ".ts", ".c", ".cpp", ".h", ".cs", ".java", ".sh", ".rs":
+				fileType = "text"
+				stats.TextFiles++
+			default:
+				stats.OtherFiles++
+			}
+
+			stats.TotalFiles++
+			stats.TotalSize += info.Size()
+			priority := calculateFilePriority(fileType, info.Size(), info.ModTime())
+
+			// Zero-copy hashing (already implemented in Phase 0)
+			hash, _ := CalculateFileHash(path)
+
+			allFiles = append(allFiles, FileMetadata{
+				Path:        path,
+				Filename:    info.Name(),
+				Ext:         ext,
+				Type:        fileType,
+				Size:        info.Size(),
+				ModTime:     info.ModTime(),
+				ContentHash: hash,
+				Priority:    priority,
+			})
+		}
+
+		stats.IsLargeDir = stats.TotalFiles >= 20
+		stats.RequiresBatch = stats.TotalFiles >= 50
 		dirStats = append(dirStats, stats)
 	}
 
 	return allFiles, dirStats, nil
+}
+
+// CalculateFileHash computes a fast hash of the file content using zero-copy mmap
+func CalculateFileHash(path string) (string, error) {
+	data, err := lowlevel.MmapFile(path)
+	if err != nil {
+		// Fallback to traditional ReadFile if mmap fails
+		data, err = os.ReadFile(path)
+		if err != nil {
+			return "", err
+		}
+		hash := lowlevel.FastHashASM(data)
+		return fmt.Sprintf("%x", hash), nil
+	}
+	defer lowlevel.Munmap(data)
+
+	hash := lowlevel.FastHashASM(data)
+	return fmt.Sprintf("%x", hash), nil
 }
 
 // discoverDirectoryEnhanced discovers files in a directory with detailed statistics
@@ -96,15 +204,19 @@ func discoverDirectoryEnhanced(dir string) ([]FileMetadata, DirectoryStats, erro
 		// Calculate priority based on file type and size
 		priority := calculateFilePriority(fileType, info.Size(), info.ModTime())
 
+		// Calculate fast hash for changed/new files (optional: could be deferred)
+		hash, _ := CalculateFileHash(path)
+
 		metadata := FileMetadata{
-			Path:     path,
-			Filename: info.Name(),
-			Ext:      ext,
-			Type:     fileType,
-			Size:     info.Size(),
-			ModTime:  info.ModTime(),
-			IsDir:    false,
-			Priority: priority,
+			Path:        path,
+			Filename:    info.Name(),
+			Ext:         ext,
+			Type:        fileType,
+			Size:        info.Size(),
+			ModTime:     info.ModTime(),
+			IsDir:       false,
+			ContentHash: hash,
+			Priority:    priority,
 		}
 
 		files = append(files, metadata)
@@ -203,11 +315,18 @@ func GroupFilesForBatchProcessing(files []FileMetadata, batchSize int) [][]FileM
 }
 
 // ProcessLargeDirectory processes directories with many files efficiently
-func ProcessLargeDirectory(files []FileMetadata, processor func(FileMetadata) error) error {
-	const workers = 5    // Number of concurrent workers
-	const batchSize = 20 // Files per batch
+func ProcessLargeDirectory(files []FileMetadata, workers int, batchSize int, processor func(FileMetadata) error) error {
+	if workers <= 0 {
+		workers = runtime.NumCPU()
+		if workers > 8 {
+			workers = 8 // Cap for mobile devices
+		}
+	}
+	if batchSize <= 0 {
+		batchSize = 20
+	}
 
-	if len(files) < 20 {
+	if len(files) < batchSize {
 		// Process sequentially for small batches
 		for _, file := range files {
 			if err := processor(file); err != nil {

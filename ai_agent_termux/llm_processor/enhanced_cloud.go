@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"ai_agent_termux/config"
+
 	"golang.org/x/exp/slog"
 )
 
@@ -225,7 +226,7 @@ func (e *EnhancedCloudLLMProcessor) runOllamaSummarization(model, text string) (
 		text = text[:maxLength] + "..."
 	}
 
-	prompt := fmt.Sprintf("Provide a concise summary of this document in %d words or less:\n\n%s",
+	prompt := fmt.Sprintf("Provide a concise summary of this document in %d words or less. If the document contains source code, please explain its purpose and use appropriate Markdown syntax highlighting (e.g., ```python) for any code snippets:\n\n%s",
 		e.config.MinSummaryLength, text)
 
 	// Run ollama with optimized parameters
@@ -328,6 +329,30 @@ func (e *EnhancedCloudLLMProcessor) getPreferredAIChatModel() string {
 	}
 
 	return "" // Use default model
+}
+
+// SummarizeWithFallback tries multiple providers in order of preference
+func (e *EnhancedCloudLLMProcessor) SummarizeWithFallback(text string) (string, error) {
+	var errs []string
+
+	// 1. Try Ollama (local-first for privacy/cost)
+	summary, err := e.SummarizeWithOllamaEnhanced(text)
+	if err == nil {
+		return summary, nil
+	}
+	errs = append(errs, fmt.Sprintf("ollama: %v", err))
+
+	// 2. Try AIChat (covers GPT, Claude, etc. if configured)
+	summary, err = e.SummarizeWithAIChatEnhanced(text)
+	if err == nil {
+		return summary, nil
+	}
+	errs = append(errs, fmt.Sprintf("aichat: %v", err))
+
+	// 3. Try Direct Cloud Fallback (placeholder for future direct API calls)
+	// For now, we rely on aichat and ollama as the primary drivers
+
+	return "", fmt.Errorf("all LLM providers failed: %s", strings.Join(errs, "; "))
 }
 
 // BatchSummarizeWithAIChat processes multiple documents with aichat

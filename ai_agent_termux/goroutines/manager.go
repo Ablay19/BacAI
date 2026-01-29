@@ -3,13 +3,37 @@ package goroutines
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"runtime"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"golang.org/x/exp/slog"
+	"ai_agent_termux/pkg/lowlevel"
+	"unsafe"
 )
+
+// TaskEventType represents the type of task event
+type TaskEventType string
+
+const (
+	EventTaskCreated   TaskEventType = "created"
+	EventTaskStarted   TaskEventType = "started"
+	EventTaskProgress  TaskEventType = "progress"
+	EventTaskCompleted TaskEventType = "completed"
+	EventTaskFailed    TaskEventType = "failed"
+	EventTaskCancelled TaskEventType = "cancelled"
+)
+
+// TaskEvent represents a real-time event from the task manager
+type TaskEvent struct {
+	Type      TaskEventType `json:"type"`
+	TaskID    string        `json:"task_id"`
+	TaskName  string        `json:"task_name"`
+	Progress  float64       `json:"progress"`
+	Message   string        `json:"message"`
+	Timestamp time.Time     `json:"timestamp"`
+}
 
 // TaskStatus represents the status of a background task
 type TaskStatus string
@@ -74,6 +98,10 @@ type TaskManager struct {
 	progressCB    ProgressCallback
 	runningPool   []*Task
 	poolMutex     sync.RWMutex
+	mpmcQueue     *lowlevel.MPMCQueue
+	extremeMode   bool
+	eventChan     chan TaskEvent
+	logChan       chan string
 }
 
 // ManagerConfig contains configuration for the task manager
@@ -110,6 +138,10 @@ func NewTaskManager(config *ManagerConfig) *TaskManager {
 		maxConcurrent: config.MaxConcurrent,
 		progressCB:    config.ProgressCallback,
 		runningPool:   make([]*Task, 0, config.MaxConcurrent),
+		mpmcQueue:     lowlevel.NewMPMCQueue(config.QueueSize),
+		extremeMode:   true, // Enable by default for Phase G
+		eventChan:     make(chan TaskEvent, 100),
+		logChan:       make(chan string, 1000),
 	}
 
 	// Start worker pool
@@ -152,7 +184,22 @@ func (tm *TaskManager) StartTaskWithConfig(name, description string, function Ta
 	tm.tasks[taskID] = task
 	tm.tasksMutex.Unlock()
 
+	// Emit event
+	tm.emitEvent(TaskEvent{
+		Type:      EventTaskCreated,
+		TaskID:    taskID,
+		TaskName:  name,
+		Timestamp: time.Now(),
+	})
+
 	// Add to queue
+	if tm.extremeMode && priority >= PriorityHigh {
+		if tm.mpmcQueue.Enqueue(unsafe.Pointer(task)) {
+			slog.Debug("Task queued in MPMC (Extreme)", "id", taskID, "name", name)
+			return taskID, nil
+		}
+	}
+
 	select {
 	case tm.queue <- task:
 		slog.Info("Task queued", "id", taskID, "name", name, "priority", priority)
@@ -274,13 +321,21 @@ func (tm *TaskManager) GetStats() map[string]interface{} {
 	}
 }
 
-// startWorkers starts the worker pool
+// startWorkers starts the worker pool with hardware-aware scaling
 func (tm *TaskManager) startWorkers() {
-	for i := 0; i < tm.workers; i++ {
+	// Simple hardware-aware logic: Use more workers if plugged in vs battery
+	// For Termux, we'll just check if we're on a high-core count device
+	workers := tm.workers
+	if runtime.NumCPU() > 8 {
+		slog.Info("High-performance hardware detected, boosting concurrency")
+		workers = runtime.NumCPU() + 2
+	}
+
+	for i := 0; i < workers; i++ {
 		tm.wg.Add(1)
 		go tm.worker(i)
 	}
-	slog.Info("Worker pool started", "workers", tm.workers)
+	slog.Info("Hardware-aware worker pool started", "workers", workers)
 }
 
 // worker processes tasks from the queue
@@ -296,6 +351,27 @@ func (tm *TaskManager) worker(id int) {
 
 		case task := <-tm.queue:
 			tm.executeTask(task, id)
+
+		default:
+			// Poll the MPMC queue if the standard queue is empty (Extreme Mode)
+			if tm.extremeMode {
+				taskPtr, ok := tm.mpmcQueue.Dequeue()
+				if ok {
+					task := (*Task)(taskPtr)
+					tm.executeTask(task, id)
+				} else {
+					// Tiny sleep to prevent CPU spin-lock exhaustion on mobile
+					time.Sleep(1 * time.Millisecond)
+				}
+			} else {
+				// No tasks, wait for channel signal
+				select {
+				case <-tm.ctx.Done():
+					return
+				case task := <-tm.queue:
+					tm.executeTask(task, id)
+				}
+			}
 		}
 	}
 }
@@ -318,11 +394,19 @@ func (tm *TaskManager) executeTask(task *Task, workerID int) {
 	task.CancelFunc = cancel
 	defer cancel()
 
+	// Emit event
+	tm.emitEvent(TaskEvent{
+		Type:      EventTaskStarted,
+		TaskID:    task.ID,
+		TaskName:  task.Name,
+		Timestamp: time.Now(),
+	})
+
 	slog.Info("Task started", "id", task.ID, "name", task.Name, "worker_id", workerID)
 
 	// Execute the task function
 	err := task.Function(ctx, func(taskID string, progress float64, message string) {
-		tm.updateTaskProgress(taskID, progress, message)
+		tm.UpdateTaskProgress(taskID, progress, message)
 	})
 
 	// Update task status based on result
@@ -379,8 +463,8 @@ func (tm *TaskManager) executeTask(task *Task, workerID int) {
 		"duration", time.Since(*task.StartedAt))
 }
 
-// updateTaskProgress updates the progress of a task
-func (tm *TaskManager) updateTaskProgress(taskID string, progress float64, message string) {
+// UpdateTaskProgress updates the progress of a task
+func (tm *TaskManager) UpdateTaskProgress(taskID string, progress float64, message string) {
 	tm.tasksMutex.Lock()
 	defer tm.tasksMutex.Unlock()
 
@@ -394,10 +478,43 @@ func (tm *TaskManager) updateTaskProgress(taskID string, progress float64, messa
 		}
 
 		// Call task-specific progress callback if set
-		if task.ProgressCB != nil {
-			task.ProgressCB(taskID, progress, message)
-		}
+		// Emit event
+		tm.emitEvent(TaskEvent{
+			Type:      EventTaskProgress,
+			TaskID:    taskID,
+			TaskName:  task.Name,
+			Progress:  progress,
+			Message:   message,
+			Timestamp: time.Now(),
+		})
 	}
+}
+
+// emitEvent sends an event to the event channel without blocking
+func (tm *TaskManager) emitEvent(event TaskEvent) {
+	select {
+	case tm.eventChan <- event:
+	default:
+		// Queue full, drop event to avoid deadlocking worker
+	}
+}
+
+// GetEventChan returns the event channel for TUI consumption
+func (tm *TaskManager) GetEventChan() <-chan TaskEvent {
+	return tm.eventChan
+}
+
+// Log sends a message to the logging channel for real-time TUI display
+func (tm *TaskManager) Log(msg string) {
+	select {
+	case tm.logChan <- msg:
+	default:
+	}
+}
+
+// GetLogChan returns the log channel for TUI consumption
+func (tm *TaskManager) GetLogChan() <-chan string {
+	return tm.logChan
 }
 
 // addToRunningPool adds a task to the running pool

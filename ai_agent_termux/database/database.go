@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"ai_agent_termux/config"
+
 	_ "github.com/mattn/go-sqlite3"
 	_ "github.com/tursodatabase/libsql-client-go/libsql"
 )
@@ -14,6 +16,17 @@ import (
 type Database struct {
 	db     *sql.DB
 	config *config.Config
+}
+
+// Document represents a document in the database
+type Document struct {
+	ID          int
+	Path        string
+	Name        string
+	FileType    string
+	FileSize    int64
+	LastIndexed time.Time
+	Summary     string
 }
 
 // NewDatabase creates a new database connection
@@ -174,6 +187,72 @@ func (d *Database) GetDatabaseInfo() (map[string]interface{}, error) {
 	}
 
 	return info, nil
+}
+
+// IsFileProcessed checks if a file with the given path and hash has already been processed
+func (d *Database) IsFileProcessed(path, hash string) (bool, error) {
+	if d.db == nil {
+		return false, fmt.Errorf("database not initialized")
+	}
+
+	var count int
+	// We check both path and hash to ensure it's the exact same file
+	err := d.db.QueryRow("SELECT COUNT(*) FROM documents WHERE file_path = ? AND content_hash = ?", path, hash).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
+}
+
+// UpdateDocumentHash updates or inserts a document's hash and metadata
+func (d *Database) UpdateDocumentHash(path, name, fileType string, size int64, hash string) error {
+	if d.db == nil {
+		return fmt.Errorf("database not initialized")
+	}
+
+	query := `
+	INSERT INTO documents (file_path, file_name, file_type, file_size, content_hash, processed_at)
+	VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+	ON CONFLICT(file_path) DO UPDATE SET
+		content_hash = excluded.content_hash,
+		processed_at = excluded.processed_at,
+		file_size = excluded.file_size;
+	`
+	_, err := d.db.Exec(query, path, name, fileType, size, hash)
+	return err
+}
+
+// SaveSummary updates the summary for a document
+func (d *Database) SaveSummary(path, summary string) error {
+	if d.db == nil {
+		return fmt.Errorf("database not initialized")
+	}
+
+	_, err := d.db.Exec("UPDATE documents SET summary = ? WHERE file_path = ?", summary, path)
+	return err
+}
+
+// GetAllDocuments returns all documents in the database
+func (d *Database) GetAllDocuments() ([]Document, error) {
+	rows, err := d.db.Query("SELECT id, file_path, file_name, file_type, file_size, processed_at, summary FROM documents")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var docs []Document
+	for rows.Next() {
+		var doc Document
+		var processedAt string
+		err := rows.Scan(&doc.ID, &doc.Path, &doc.Name, &doc.FileType, &doc.FileSize, &processedAt, &doc.Summary)
+		if err != nil {
+			continue
+		}
+		doc.LastIndexed, _ = time.Parse("2006-01-02 15:04:05", processedAt)
+		docs = append(docs, doc)
+	}
+	return docs, nil
 }
 
 // HealthCheck performs a database health check

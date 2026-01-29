@@ -5,8 +5,11 @@ import (
 
 	"ai_agent_termux/config"
 	"ai_agent_termux/database"
+	"ai_agent_termux/embedding_generator"
 	"ai_agent_termux/file_processor"
 	"ai_agent_termux/llm_processor"
+	"ai_agent_termux/output_manager"
+	"ai_agent_termux/preprocessor"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slog"
@@ -124,7 +127,7 @@ func processLargeBatch(files []file_processor.FileMetadata, cfg *config.Config,
 	// Process text files first (highest priority)
 	if len(textFiles) > 0 {
 		fmt.Printf("Processing %d text files with batching\n", len(textFiles))
-		err := file_processor.ProcessLargeDirectory(textFiles, func(file file_processor.FileMetadata) error {
+		err := file_processor.ProcessLargeDirectory(textFiles, workers, batchSize, func(file file_processor.FileMetadata) error {
 			return processSingleFile(file, cfg, llmProc, db)
 		})
 		if err != nil {
@@ -135,7 +138,7 @@ func processLargeBatch(files []file_processor.FileMetadata, cfg *config.Config,
 	// Process PDF files
 	if len(pdfFiles) > 0 {
 		fmt.Printf("Processing %d PDF files with batching\n", len(pdfFiles))
-		err := file_processor.ProcessLargeDirectory(pdfFiles, func(file file_processor.FileMetadata) error {
+		err := file_processor.ProcessLargeDirectory(pdfFiles, workers, batchSize, func(file file_processor.FileMetadata) error {
 			return processSingleFile(file, cfg, llmProc, db)
 		})
 		if err != nil {
@@ -146,7 +149,7 @@ func processLargeBatch(files []file_processor.FileMetadata, cfg *config.Config,
 	// Process image files
 	if len(imageFiles) > 0 {
 		fmt.Printf("Processing %d image files with batching\n", len(imageFiles))
-		err := file_processor.ProcessLargeDirectory(imageFiles, func(file file_processor.FileMetadata) error {
+		err := file_processor.ProcessLargeDirectory(imageFiles, workers, batchSize, func(file file_processor.FileMetadata) error {
 			return processSingleFile(file, cfg, llmProc, db)
 		})
 		if err != nil {
@@ -182,15 +185,67 @@ func processStandardBatch(files []file_processor.FileMetadata, cfg *config.Confi
 func processSingleFile(file file_processor.FileMetadata, cfg *config.Config,
 	llmProc *llm_processor.EnhancedCloudLLMProcessor, db *database.Database) error {
 
-	slog.Info("Processing file", "file", file.Path, "type", file.Type, "size", file.Size)
+	slog.Info("Processing file with enhanced mode", "file", file.Path, "type", file.Type)
 
-	// Here you would:
-	// 1. Preprocess the file (extract text)
-	// 2. Generate embeddings
-	// 3. Store in database
-	// 4. Generate summary using enhanced LLM
+	// Check if already processed (Incremental Scanning)
+	if db != nil && file.ContentHash != "" {
+		processed, err := db.IsFileProcessed(file.Path, file.ContentHash)
+		if err == nil && processed {
+			slog.Info("Skipping unchanged file", "path", file.Path)
+			return nil
+		}
+	}
 
-	// For now, just log the processing
+	// Initialize components
+	outputManager := output_manager.NewOutputManager(cfg)
+
+	// Preprocess file
+	preprocessedContent, err := preprocessor.PreprocessFile(file, cfg)
+	if err != nil {
+		slog.Error("Error preprocessing file", "file", file.Path, "error", err)
+		return err
+	}
+
+	// Create processed file record
+	processedFile := outputManager.CreateProcessedFileFromMetadata(file, preprocessedContent.Text)
+
+	// Generate embeddings
+	embeddings, err := embedding_generator.GenerateEmbeddingsForFile(preprocessedContent.Text, cfg)
+	if err != nil {
+		slog.Warn("Error generating embeddings for file", "file", file.Path, "error", err)
+	}
+
+	// Process with enhanced LLM (already initialized)
+	summary, err := llmProc.SummarizeWithFallback(preprocessedContent.Text)
+	sourceLLM := "enhanced-cloud"
+	if err != nil {
+		slog.Error("Enhanced LLM summarization failed", "file", file.Path, "error", err)
+		summary = "Summary generation failed"
+	}
+
+	// Update processed file with LLM results
+	outputManager.UpdateProcessedFile(&processedFile, summary, nil, nil, embeddings, sourceLLM)
+
+	// Save processed file (JSON output)
+	err = outputManager.SaveProcessedFile(processedFile)
+	if err != nil {
+		slog.Error("Error saving processed file", "file", file.Path, "error", err)
+		return err
+	}
+
+	// Update database with results
+	if db != nil {
+		err = db.UpdateDocumentHash(file.Path, file.Filename, file.Type, file.Size, file.ContentHash)
+		if err != nil {
+			slog.Warn("Failed to update document in database", "file", file.Path, "error", err)
+		}
+		err = db.SaveSummary(file.Path, summary)
+		if err != nil {
+			slog.Warn("Failed to save summary to database", "file", file.Path, "error", err)
+		}
+	}
+
+	slog.Info("Successfully processed file (enhanced)", "path", file.Path)
 	return nil
 }
 

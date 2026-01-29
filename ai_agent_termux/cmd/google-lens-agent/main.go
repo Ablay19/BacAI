@@ -1,3 +1,5 @@
+//go:build standalone_agent
+
 package main
 
 import (
@@ -101,7 +103,7 @@ func initializeApp() (*App, error) {
 	}
 
 	// Initialize Google Lens processor
-	googleLens, err := automation.NewGoogleLensProcessor(cfg)
+	googleLens := automation.NewGoogleLensProcessor(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Google Lens processor: %v", err)
 	}

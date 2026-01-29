@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"ai_agent_termux/automation"
 	"ai_agent_termux/config"
 	"ai_agent_termux/file_processor"
 	"ai_agent_termux/utils"
@@ -24,6 +25,8 @@ func PreprocessFile(file file_processor.FileMetadata, cfg *config.Config) (*Prep
 		content, err = preprocessImage(file.Path, cfg)
 	case "pdf":
 		content, err = preprocessPDF(file.Path, cfg)
+	case "audio", "video":
+		content, err = preprocessMedia(file.Path, cfg)
 	case "text":
 		content, err = preprocessText(file.Path, cfg)
 	default:
@@ -44,19 +47,45 @@ func preprocessImage(imagePath string, cfg *config.Config) (PreprocessedContent,
 	content := PreprocessedContent{
 		Metadata: make(map[string]string),
 	}
-	content.Metadata["source"] = "ocr"
-	content.Metadata["language"] = cfg.TesseractLang
 
+	// 1. Scene Description & OCR (via Python script)
+	// This captures LLaVA + Tesseract
 	scriptPath := filepath.Join(cfg.PythonScriptsDir, "ocr_processor.py")
 	cmd := "python3"
 	args := []string{scriptPath, imagePath, cfg.TesseractLang}
 
-	output, err := utils.ExecuteCommand(cmd, args...)
+	pyOutput, err := utils.ExecuteCommand(cmd, args...)
 	if err != nil {
 		return content, err
 	}
+	content.Text = pyOutput
 
-	content.Text = output
+	// 2. Google Lens Deep Search (via automation package)
+	// We'll try to get more structured visual data if enabled
+	glp := automation.NewGoogleLensProcessor(cfg)
+	if glp != nil {
+		lensResult, err := glp.ProcessImage(imagePath, "identify_object")
+		if err == nil {
+			content.Text += "\n\n--- Google Lens Deep Search ---"
+			content.Text += "\nIdentified Objects: " + lensResult.ResultText
+
+			if len(lensResult.Objects) > 0 {
+				for _, obj := range lensResult.Objects {
+					content.Text += fmt.Sprintf("\n- %s (Confidence: %.2f)", obj.Name, obj.Confidence)
+				}
+			}
+
+			if len(lensResult.Barcodes) > 0 {
+				content.Text += "\n\nBarcodes/QR Detected:"
+				for _, b := range lensResult.Barcodes {
+					content.Text += fmt.Sprintf("\n- [%s] %s", b.Type, b.Data)
+				}
+			}
+		}
+	}
+
+	content.Metadata["source"] = "ocr_llava_lens"
+	content.Metadata["language"] = cfg.TesseractLang
 	return content, nil
 }
 

@@ -6,6 +6,7 @@ import (
 
 	"ai_agent_termux/config"
 	"ai_agent_termux/utils"
+
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slog"
 )
@@ -51,6 +52,7 @@ func init() {
 	rootCmd.AddCommand(configCmd)
 	rootCmd.AddCommand(dbCmd)
 	rootCmd.AddCommand(androidCmd)
+	rootCmd.AddCommand(gardenCmd)
 	rootCmd.AddCommand(versionCmd)
 
 	// Add completion command

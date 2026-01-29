@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"ai_agent_termux/config"
+	"ai_agent_termux/database"
 	"ai_agent_termux/embedding_generator"
 	"ai_agent_termux/file_processor"
 	"ai_agent_termux/llm_processor"
@@ -38,9 +39,17 @@ var scanCmd = &cobra.Command{
 
 		slog.Info("Files discovered", "count", len(files))
 
+		// Initialize database
+		db, err := database.NewDatabase(cfg)
+		if err != nil {
+			slog.Warn("Failed to initialize database, incremental scanning disabled", "error", err)
+		} else {
+			defer db.Close()
+		}
+
 		// Process each file
 		for _, file := range files {
-			err := processFile(file, cfg)
+			err := processFile(file, cfg, db)
 			if err != nil {
 				slog.Warn("Error processing file, continuing with others", "file", file.Path, "error", err)
 			}
@@ -50,8 +59,17 @@ var scanCmd = &cobra.Command{
 	},
 }
 
-func processFile(file file_processor.FileMetadata, cfg *config.Config) error {
+func processFile(file file_processor.FileMetadata, cfg *config.Config, db *database.Database) error {
 	slog.Info("Processing file", "path", file.Path, "type", file.Type)
+
+	// Check if already processed (Incremental Scanning)
+	if db != nil && file.ContentHash != "" {
+		processed, err := db.IsFileProcessed(file.Path, file.ContentHash)
+		if err == nil && processed {
+			slog.Info("Skipping unchanged file", "path", file.Path)
+			return nil
+		}
+	}
 
 	// Initialize components
 	outputManager := output_manager.NewOutputManager(cfg)
@@ -103,6 +121,18 @@ func processFile(file file_processor.FileMetadata, cfg *config.Config) error {
 	if err != nil {
 		slog.Error("Error saving processed file", "file", file.Path, "error", err)
 		return err
+	}
+
+	// Update database with results
+	if db != nil {
+		err = db.UpdateDocumentHash(file.Path, file.Filename, file.Type, file.Size, file.ContentHash)
+		if err != nil {
+			slog.Warn("Failed to update document in database", "file", file.Path, "error", err)
+		}
+		err = db.SaveSummary(file.Path, summary)
+		if err != nil {
+			slog.Warn("Failed to save summary to database", "file", file.Path, "error", err)
+		}
 	}
 
 	slog.Info("Successfully processed file", "path", file.Path)
